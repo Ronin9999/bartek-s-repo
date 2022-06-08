@@ -4,11 +4,11 @@ name: CI
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
+  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -18,19 +18,40 @@ jobs:
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
-    runs-on: AVANT #ubuntu-latest
+    runs-on: self-hosted
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+      - name: Mvn cleaning
+        run: mvn -f parent\pom.xml clean
+            
+      - name: Mvn istallation without tests
+        run: mvn -f parent\pom.xml install jtest:jtest -DskipTests=true
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+      # Runs code analysis with Jtest
+      - name: Run Jtest
+        id: jtest
+        uses: parasoft/run-jtest-action@0.0.2
+        with:
+        #Uses the jtest.data.json generated with the Maven command in the previous step
+          input: parent/target/jtest/jtest.data.json
+          testConfig: builtin://Critical Rules
+          additionalParams: -fail -property techsupport.create.on.exit=false
+          
+        # Uploads analysis results in the SARIF format, so that they are displayed as GitHub code scanning alerts.
+      - name: Upload results (SARIF)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: reports/report.sarif # reports is a default location for reports directory
+
+        # Uploads an archive that includes all report files (.xml, .html, .sarif).
+      - name: Archive reports
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: Static analysis reports
+          path: reports/*.*
