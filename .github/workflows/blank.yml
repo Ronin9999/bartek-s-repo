@@ -34,7 +34,7 @@ jobs:
       # Runs code analysis with Jtest
       - name: Run Jtest
         id: jtest
-        uses: parasoft/run-jtest-action@0.0.2
+        uses: parasoft/run-jtest-action@1.0.0
         with:
         #Uses the jtest.data.json generated with the Maven command in the previous step
           input: parent/target/jtest/jtest.data.json
